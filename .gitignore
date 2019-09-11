@@ -126,4 +126,4 @@ dmypy.json
 .idea/
 
 # data 
-event_data.npy
+*.npy
