@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from datetime import datetime, timedelta
-
+from tqdm import trange
 
 class DataModel(object):
     def __init__(self, dataframe):
@@ -96,7 +96,7 @@ class DataModel(object):
                                                       '超期未完成数量', '超期权重',
                                                       '进行中数量', '进行中权重',
                                                       ])  # 均为当天数据
-        for i in range(len(index)):
+        for i in trange(len(index)):
             day = index[i]
             assert day is not None
             self.someday = day
