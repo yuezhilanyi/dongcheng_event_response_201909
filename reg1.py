@@ -1,8 +1,11 @@
+import os
+
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from datetime import datetime, timedelta
 from tqdm import trange
+
 
 class DataModel(object):
     def __init__(self, dataframe):
@@ -20,10 +23,10 @@ class DataModel(object):
         :return:
         """
         c1 = self.df[self.df["结案时间"].dt.date == self.someday]  # 当日结案的所有事件
-        c2 = self.df[self.df["上报时间"].dt.date <= self.someday + timedelta(days=1)]
+        c2 = self.df[self.df["上报时间"].dt.date <= self.someday]
         c2 = c2[pd.isnull(c2["结案时间"])]  # 截至当日，已上报但是没有结案的事件
         c = len(c1) + len(c2)
-        return c
+        return c, len(c1), len(c2)
 
     def count_obsolete_events_of_someday(self):
         """
@@ -50,39 +53,24 @@ class DataModel(object):
         """
         c = self.df[self.df["结案时间"].dt.date == self.someday]  # 查询日当天
         c = c[c['当前阶段'] != '[作废]']  # 未作废
-        c1 = c[-pd.isnull(c["结案时间"])]  # 有结案时间
+
+        # 有结案时间
+        c1 = c[-pd.isnull(c["结案时间"])]
         # a = c1[c1['结案时间'] < c1['处置截止时间'] + timedelta(days=1)]
         a = c1[c1['结案时间'] <= c1['处置截止时间']]
         wa = 1
         b = c1[c1['结案时间'] > c1['处置截止时间']]
         wb = 1
-        c2 = c[pd.isnull(c["结案时间"])]  # 无结案时间
+
+        # 无结案时间
+        # TODO: 这里都为0(因为前边使用了结案时间做筛选), 需要优化
+        c2 = c[pd.isnull(c["结案时间"])]
         c = c2[-pd.isnull(c["处置截止时间"])]  # 有处置截止时间
         wc = 1
         d = c2[pd.isnull(c["处置截止时间"])]  # 无处置截止时间
         wd = 1
+
         return len(a), wa, len(b), wb, len(c), wc, len(d), wd
-
-    def cal_event_completed_on_schedule(self):
-        """
-        提前或按期完成, 结案时间早于截止时间。
-        :return: counts and weight on time
-        """
-        pass
-
-    def cal_event_completed_out_of_schedule(self):
-        """
-        延期完成, 结案时间晚于截止时间。
-        :return: counts and weight on time
-        """
-        pass
-
-    def cal_event_uncompleted_after_deadline(self):
-        """
-        超期未完成： 上报时间早于查询日期, 且无结案日期
-        :return: counts and weight on time
-        """
-        pass
 
     def cal_all(self):
         # get all '结案时间' list
@@ -90,7 +78,7 @@ class DataModel(object):
         self.index = sorted(index)
         # new dataframe group by "结案时间"
         # TODO: add rows that has no events, May Day, Sprint Festival, etc.
-        res = pd.DataFrame(index=self.index, columns=['作废数量', '总计',
+        res = pd.DataFrame(index=self.index, columns=['作废数量', '截至当日总计', '截至当日结案总计', '截至当日未结案总计',
                                                       '按期完成数量', '按期权重',
                                                       '延期完成数量',  '延期权重',
                                                       '超期未完成数量', '超期权重',
@@ -101,22 +89,19 @@ class DataModel(object):
             assert day is not None
             self.someday = day
             obsolete = self.count_obsolete_events_of_someday()
-            total = self.count_all_events_of_someday()
+            total, t1, t2 = self.count_all_events_of_someday()
             c1, w1, c2, w2, c3, w3, c4, w4 = self.cal_non_obsolete_events()
-            # comp_before_deadline, w1 = self.cal_event_completed_on_schedule()
-            # comp_after_deadline, w2 = self.cal_event_completed_out_of_schedule()
-            # uncomp_after_deadline, w3 = self.cal_event_uncompleted_after_deadline()
-            res.iloc[i] = [obsolete, total,
+            res.iloc[i] = [obsolete, total, t1, t2,
                            c1, w1, c2, w2, c3, w3, c4, w4]
         return res
 
 
-def read_source(file_path, sheetname=0, save_to_npy=True, save_to_excel=False):
+def read_source(file_path, output_path, sheetname=0, save_to_npy=True, save_to_excel=False):
     """
     读取源文件并简化，最后以结案日期为索引，生成一张新表用作训练和测试
     :param file_path:
+    :param output_path:
     :param sheetname:
-    :param columns:
     :param save_to_npy:
     :param save_to_excel:
     :return:
@@ -136,10 +121,16 @@ def read_source(file_path, sheetname=0, save_to_npy=True, save_to_excel=False):
     df = df[["处置用时", "上报时间", "问题类型", "案件类型", "小类名称", "街道", "当前阶段", "强结限制", "延期类型",
              "问题状态", "发核查数", "处置截止时间", "结案时间", "作废时间"]]
 
+    # add some fields
+    df["结案日期"] = df["结案时间"].dt.date
+    df["处置限制时长"] = df["处置截止时间"].subtract(df["上报时间"])
+    df["实际花费时长"] = df["结案时间"].subtract(df["上报时间"])
+
+    output_path = os.path.splitext(output_path)[0]
     if save_to_npy:
-        df.to_pickle("../event_data_simplified.npy")
+        df.to_pickle(output_path + '.npy')
     if save_to_excel:
-        df.to_excel("../event_data_simplified.xlsx")
+        df.to_excel(output_path + '.xlsx')
 
     return df
 
@@ -198,26 +189,9 @@ def polynomial_reg_test(train_data, train_label, test_data, index):
 if __name__ == "__main__":
     # define source file path
     source_file = '../event_data.npy'
-    # read and join multiple rows into one row
-    df1 = read_source(source_file)
+    df1 = read_source(source_file, output_path='../event_data_simplified')
 
     dm = DataModel(df1)
     df1 = dm.cal_all()
-    df1.to_pickle('./on_line.npy')
-
-    # # read label
-    # df2 = pd.read_excel('label.xlsx')
-    # df2a = df2.iloc[:, :2]
-    # df2b = df2.iloc[:, 2:]
-    # df2a.columns = ['area', 'mean_value']
-    # df2b.columns = ['area', 'mean_value']
-    #
-    # # train data
-    # X, Y = convert_data_and_label_to_train(df1, df2a)
-    # # test data
-    # test_out = read_source('test.xlsx')
-    # test_index = test_out['area']
-    # del test_out['area']
-    #
-    # linear_reg_test(X, Y, test_out, test_index)
-    # polynomial_reg_test(X, Y, test_out, test_index)
+    df1.to_pickle('../one_line.npy')
+    df1.to_excel('../one_line.xlsx')
