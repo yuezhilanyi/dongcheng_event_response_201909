@@ -2,6 +2,7 @@ import os
 import tqdm
 
 import pandas as pd
+import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from datetime import datetime, timedelta
@@ -29,7 +30,7 @@ def read_source(file_path, sheetname=0):
     df = df[df['当前阶段'] != '[作废]']  # 根据2019.9.18与网格中心考评处的沟通, 不考虑作废案件
 
     # keep only useful columns, to reduce too many dimensions
-    df = df[['案件号', '问题来源', '问题类型', '大类名称', '街道', '上报时间', '当前阶段', '处置截止时间','处置结束时间',
+    df = df[['案件号', '问题来源', '问题类型', '大类名称', '街道', '上报时间', '当前阶段', '处置截止时间', '处置结束时间',
              '结案时间', '立案时间', '强制结案时间']]
     """
     '案件号', '问题来源', '问题类型', '大类名称', '街道', '上报时间', '当前阶段', '延期类型', '案件标识', '处置截止时间', 
@@ -89,10 +90,27 @@ def convert_to_new_dataframe(df):
             t2a = (row["处置结束时间"] - row["立案时间"]).seconds
         return someday, somewhere, n1, n2, t1, t2p, t2a
 
-    df["立案耗时"] = df["立案时间"].subtract(df["上报时间"])
+    # 时间类
+    df["立案耗时"] = df["立案时间"].subtract(df["上报时间"]).values
     df["处置预计耗时"] = df["处置截止时间"].subtract(df["立案时间"])
     df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
+    # 时间转分钟
+    # https://blog.csdn.net/liudinglong1989/article/details/78728683
+    f = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
+    df["立案耗时"] = df["立案耗时"].apply(f)
+    df["处置预计耗时"] = df["处置预计耗时"].apply(f)
+    df["处置实际耗时"] = df["处置实际耗时"].apply(f)
+    # 处置耗时百分比
+    df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
 
+    # 立案耗时加权
+    bins = [0, 60, 360, 1440, 4320, 999999]  # minutes
+    df["W立案"] = pd.cut(df["立案耗时"], bins, labels=[1, 2, 3, 4, 5])
+    # 处置耗时加权
+    bins = [0, 25, 50, 70, 100, 150, 200, 300, 999999]
+    df["W处置"] = pd.cut(df["处置耗时百分比"], bins, labels=[1, 2, 3, 4, 5, 6, 7, 8])
+    # 强结案加权
+    df["W强结"] = -pd.isnull(df["强制结案时间"])
     return df
 
 
