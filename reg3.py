@@ -39,24 +39,26 @@ def read_source(file_path, sheetname=0):
     """
 
     # 时间类
-    df["立案耗时"] = df["立案时间"].subtract(df["上报时间"]).values
+    df["立案耗时"] = df["立案时间"].subtract(df["上报时间"])
     df["处置预计耗时"] = df["处置截止时间"].subtract(df["立案时间"])
     df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
     # 时间转分钟
     # https://blog.csdn.net/liudinglong1989/article/details/78728683
     f = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
-    df["立案耗时"] = df["立案耗时"].apply(f)
-    df["处置预计耗时"] = df["处置预计耗时"].apply(f)
-    df["处置实际耗时"] = df["处置实际耗时"].apply(f)
+    df["立案耗时(mins)"] = df["立案耗时"].apply(f)
+    df["处置预计耗时(mins)"] = df["处置预计耗时"].apply(f)
+    df["处置实际耗时(mins)"] = df["处置实际耗时"].apply(f)
     # 处置耗时百分比
     df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
 
     # 立案耗时加权
-    bins = [0, 60, 360, 1440, 4320, 999999]  # minutes
-    df["W立案"] = pd.cut(df["立案耗时"], bins, labels=[5, 4, 3, 2, 1])
+    # bins = [0, 60, 360, 1440, 4320, 999999]  # minutes [0-1h, 1h-6h, 6h-1d, 1d-3d, >3d]
+    bins = [timedelta(hours=0), timedelta(hours=1), timedelta(hours=6),
+            timedelta(hours=24), timedelta(hours=72), timedelta(days=365)]  # minutes [0-1h, 1h-6h, 6h-1d, 1d-3d, >3d]
+    df["W立案"] = pd.cut(df["立案耗时"], bins, labels=[1, 0, -1, -2, -3])
     # 处置耗时加权
     bins = [0, 25, 50, 70, 100, 150, 200, 300, 999999]  # percentage / %
-    df["W处置"] = pd.cut(df["处置耗时百分比"], bins, labels=[10, 9, 8, 7, 6, 4, 2, 0])
+    df["W处置"] = pd.cut(df["处置耗时百分比"], bins, labels=[4, 3, 2, 1, -1, -2, -3, -4])
     # 强结案加权
     df["W强结"] = -pd.isnull(df["强制结案时间"])
 
@@ -79,39 +81,54 @@ def convert_to_new_dataframe(df):
         gt = dataframe_gt[somewhere]
         return gt
 
-    def dataframe2list(dataframe, somewhere, someday):
-        """
-
-        :param dataframe: pandas dataframe
-        :param somewhere: str,
-        :param someday: datetime.date
-        :return: list consist of str, float and int values
-        """
+    def new_df_until_someday(dataframe, somewhere, someday):
+        deadline = pd.Timestamp(datetime.combine(someday, datetime.max.time()))
         # F1 - 某地所有案件
         dataframe = dataframe[dataframe["街道"] == somewhere]
 
         # F2.1 - 监督员自行处理的案件
         df_self = dataframe[dataframe["问题来源"] == "监督员自行处理"]
-        df_self = df_self[dataframe["上报时间"].dt.date == someday]  # 某日自行处理案件, 默认为当天完成(结案时间不正确)
+        df_self = df_self[dataframe["上报时间"].dt.date == deadline]  # 某日自行处理案件, 默认为当天完成(结案时间不正确)
         n1 = len(df_self)  # 自行处理案件总数
         # F2.2 - 剩余案件 (均具有处置截止时间, 处置结束时间, 结案时间, 立案时间等信息)
         dataframe = dataframe[dataframe["问题来源"] != "监督员自行处理"]
 
         # F3 (<-F2.2) - 考核日之前的所有案件
-        dataframe = dataframe[dataframe["上报时间"] <= someday]
-        # F3.1 非考核日之前结案
-        dataframe = dataframe[-dataframe["结案日期"] < someday]
+        dataframe = dataframe[dataframe["上报时间"] <= deadline]
 
-        n2 = len(dataframe)  # 非自行处理案件总数
-        dti = 0  # disposal time index
+        iso_someday = int(deadline.isoformat().replace('-', '')[:8])
+        dataframe.to_excel('../tmp/{}_{}.xlsx'.format(somewhere, iso_someday))
 
-        t1, t2p, t2a = None, None, None
+        return dataframe
 
-        for _, row in dataframe.iterrows():
-            t1 = (row["立案时间"] - row["上报时间"]).seconds
-            t2p = (row["处置截止时间"] - row["立案时间"]).seconds
-            t2a = (row["处置结束时间"] - row["立案时间"]).seconds
-        return someday, somewhere, n1, n2, t1, t2p, t2a
+    # for i in tqdm.trange(len(index)):
+    for i in tqdm.trange(1):
+        day = index[i]
+        deadline = pd.Timestamp(datetime.combine(day, datetime.max.time()))
+        assert day is not None
+        # for area in df["街道"].value_counts().index:
+        for area in ["东华门", "景山", "交道口", "安定门", "北新桥", "东四", "朝阳门", "建国门", "东直门", "和平里",
+                     "前门", "崇外", "东花市", "龙潭", "体育馆", "天坛", "永定门外"]:  # 和网格代码顺序一致, 方便后续观察对比
+            # tqdm.tqdm.write(area)
+            ndf = new_df_until_someday(df, area, day)
+            # 非考核日之前结案, 说明考核日当天未结案
+            f = lambda x: deadline if x > deadline else x
+            ndf["处置结束时间"] = ndf["处置结束时间"].apply(f)
+
+            ndf["处置实际耗时(mins)"] = ndf["处置实际耗时"].apply(f)
+            # 处置耗时百分比
+            ndf["处置耗时百分比"] = ndf["处置实际耗时"] / ndf["处置预计耗时"] * 100
+            df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
+
+            # 时间转分钟
+            # https://blog.csdn.net/liudinglong1989/article/details/78728683
+            f = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
+            df["处置实际耗时(mins)"] = df["处置实际耗时"].apply(f)
+            # 处置耗时百分比
+            df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
+
+        iso_someday = int(deadline.isoformat().replace('-', '')[:8])
+        ndf.to_excel('../tmp2/{}_{}.xlsx'.format(area, iso_someday))
 
     return df
 
@@ -169,7 +186,7 @@ if __name__ == "__main__":
     # df1.to_pickle('../event_data_simplified.npy')
 
     df2 = convert_to_new_dataframe(df1)
-    df2.to_excel('../ndf.xlsx')
+    # df2.to_excel('../ndf.xlsx')
 
     # dm = DataModel(df1)
     # df1 = dm.cal_all()
