@@ -39,7 +39,7 @@ def read_source(file_path, sheetname=0):
     # 时间转分钟
 
     # https://blog.csdn.net/liudinglong1989/article/details/78728683
-    def f(x): return int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
+    def f(x): return int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else 0
 
     df["立案耗时"] = df["立案耗时"].apply(f)
     df["处置预计耗时"] = df["处置预计耗时"].apply(f)
@@ -110,12 +110,21 @@ def convert_to_new_dataframe(srs_df):
             # tqdm.tqdm.write(area)
             df, df_self = new_df_until_someday(srs_df, area, day)
             df = df[-(df["处置结束时间"] < pd.Timestamp(day))]
+
+            # 如果 dataframe 为空, 跳至下一个
+            if len(df) == 0:
+                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0])
+                continue
+
+            # TODO: 漏洞 - 2017东城管字537978
+
             # 非考核日之前结案, 说明考核日当天未结案, 替换处置结束时间为当天24点
             df["处置结束时间"] = df["处置结束时间"].apply(func_less_than_day_end)
 
             # 截至当天, 处置实际耗时总计
             df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
             df["处置实际耗时"] = df["处置实际耗时"].apply(func_dt2mins)
+            df["处置实际耗时"] = np.where(df["处置结束时间"] < df["立案时间"], timedelta(days=0) / timedelta(minutes=1), df["处置实际耗时"])
             # 处置耗时百分比
             df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
 
@@ -123,6 +132,8 @@ def convert_to_new_dataframe(srs_df):
             df["当天案件开始时间"] = df["立案时间"].apply(func_less_than_day_start)
             df["当天处置实际耗时"] = df["处置结束时间"].subtract(df["当天案件开始时间"])
             df["当天处置实际耗时"] = df["当天处置实际耗时"].apply(func_dt2mins)
+            df["当天处置实际耗时"] = np.where(df["处置结束时间"] < df["当天案件开始时间"], timedelta(days=0) / timedelta(minutes=1),
+                                      df["当天处置实际耗时"])
             # 1439 -> 1440
             def func_1439to1440(x): return 1440 if x == 1439 else x
             df["当天处置实际耗时"] = df["当天处置实际耗时"].apply(func_1439to1440)
@@ -131,12 +142,14 @@ def convert_to_new_dataframe(srs_df):
             df["当天计划内耗时"] = df["处置截止时间"].subtract(df["当天案件开始时间"])
 
             def f4(x):
-                if x < timedelta(days=0):
+                if x <= timedelta(days=0):
                     return timedelta(days=0)
                 elif timedelta(days=0) <= x <= timedelta(days=1):
                     return x
-                else:
+                elif timedelta(days=1) < x:
                     return timedelta(days=1)
+                else:
+                    return timedelta(days=0)
             df["当天计划内耗时"] = df["当天计划内耗时"].apply(f4)
             df["当天计划内耗时"] = df["当天计划内耗时"].apply(func_dt2mins)
             # http://www.it1352.com/605416.html
@@ -165,7 +178,7 @@ def convert_to_new_dataframe(srs_df):
                                      "自行处理案件总数", "其他案件总数", "强制结案总数",
                                      "立案耗时总长(分钟)", "计划内耗时总长(分钟)", "计划外耗时总长(分钟)"])
 
-    res.to_excel('ndf20190919.xlsx')
+    res.to_excel('../ndf20190919.xlsx')
 
     return res
 
