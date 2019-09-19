@@ -39,25 +39,25 @@ def read_source(file_path, sheetname=0):
     """
 
     # 时间类
-    df["立案耗时"] = df["立案时间"].subtract(df["上报时间"])
-    df["处置预计耗时"] = df["处置截止时间"].subtract(df["立案时间"])
-    df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
+    df["立案耗时(mins)"] = df["立案时间"].subtract(df["上报时间"])
+    df["处置预计耗时(mins)"] = df["处置截止时间"].subtract(df["立案时间"])
+    df["处置实际耗时(mins)"] = df["处置结束时间"].subtract(df["立案时间"])
     # 时间转分钟
     # https://blog.csdn.net/liudinglong1989/article/details/78728683
     f = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
-    df["立案耗时(mins)"] = df["立案耗时"].apply(f)
-    df["处置预计耗时(mins)"] = df["处置预计耗时"].apply(f)
-    df["处置实际耗时(mins)"] = df["处置实际耗时"].apply(f)
+    df["立案耗时(mins)"] = df["立案耗时(mins)"].apply(f)
+    df["处置预计耗时(mins)"] = df["处置预计耗时(mins)"].apply(f)
+    df["处置实际耗时(mins)"] = df["处置实际耗时(mins)"].apply(f)
     # 处置耗时百分比
-    df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
+    df["处置耗时百分比"] = df["处置实际耗时(mins)"] / df["处置预计耗时(mins)"] * 100
 
     # 立案耗时加权
-    # bins = [0, 60, 360, 1440, 4320, 999999]  # minutes [0-1h, 1h-6h, 6h-1d, 1d-3d, >3d]
-    bins = [timedelta(hours=0), timedelta(hours=1), timedelta(hours=6),
-            timedelta(hours=24), timedelta(hours=72), timedelta(days=365)]  # minutes [0-1h, 1h-6h, 6h-1d, 1d-3d, >3d]
-    df["W立案"] = pd.cut(df["立案耗时"], bins, labels=[1, 0, -1, -2, -3])
+    bins = [0, 60, 360, 1440, 4320, 999999]  # minutes [0-1h, 1h-6h, 6h-1d, 1d-3d, >3d]
+    # bins = [timedelta(hours=0), timedelta(hours=1), timedelta(hours=6),
+    #         timedelta(hours=24), timedelta(hours=72), timedelta(days=365)]  # minutes [0-1h, 1h-6h, 6h-1d, 1d-3d, >3d]
+    df["W立案"] = pd.cut(df["立案耗时(mins)"], bins, labels=[1, 0, -1, -2, -3])
     # 处置耗时加权
-    bins = [0, 25, 50, 70, 100, 150, 200, 300, 999999]  # percentage / %
+    bins = [0, 25, 50, 75, 100, 150, 200, 300, 999999]  # percentage / %
     df["W处置"] = pd.cut(df["处置耗时百分比"], bins, labels=[4, 3, 2, 1, -1, -2, -3, -4])
     # 强结案加权
     df["W强结"] = -pd.isnull(df["强制结案时间"])
@@ -65,14 +65,14 @@ def read_source(file_path, sheetname=0):
     return df
 
 
-def convert_to_new_dataframe(df):
+def convert_to_new_dataframe(srs_df):
     # # add some fields
-    df["结案日期"] = df["结案时间"].dt.date
+    srs_df["结案日期"] = srs_df["结案时间"].dt.date
     df_gt = pd.read_excel("../ZS222.xlsx")
     df_gt.set_index(df_gt["日期"], inplace=True)
 
     # new dataframe
-    index = df["结案日期"].value_counts().index
+    index = srs_df["结案日期"].value_counts().index
     index = sorted(index)
 
     def get_gt(dataframe_gt, somewhere, someday):
@@ -102,33 +102,48 @@ def convert_to_new_dataframe(df):
         return dataframe
 
     # for i in tqdm.trange(len(index)):
-    for i in tqdm.trange(1):
+    for i in tqdm.trange(3, 4):
         day = index[i]
-        deadline = pd.Timestamp(datetime.combine(day, datetime.max.time()))
+        day_start = pd.Timestamp(datetime.combine(day, datetime.min.time()))
+        day_end = pd.Timestamp(datetime.combine(day, datetime.max.time()))
         assert day is not None
+
+        def f1(x):
+            return day_end if x > day_end else x
+
+        def f2(x):
+            return int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
+
+        def f3(x):
+            return day_start if x < day_start else x  # 取立案时间和零点较晚的
+
         # for area in df["街道"].value_counts().index:
         for area in ["东华门", "景山", "交道口", "安定门", "北新桥", "东四", "朝阳门", "建国门", "东直门", "和平里",
                      "前门", "崇外", "东花市", "龙潭", "体育馆", "天坛", "永定门外"]:  # 和网格代码顺序一致, 方便后续观察对比
             # tqdm.tqdm.write(area)
-            ndf = new_df_until_someday(df, area, day)
+            df = new_df_until_someday(srs_df, area, day)
+            df = df[-(df["处置结束时间"] < pd.Timestamp(day))]
             # 非考核日之前结案, 说明考核日当天未结案
-            f = lambda x: deadline if x > deadline else x
-            ndf["处置结束时间"] = ndf["处置结束时间"].apply(f)
-
-            ndf["处置实际耗时(mins)"] = ndf["处置实际耗时"].apply(f)
-            # 处置耗时百分比
-            ndf["处置耗时百分比"] = ndf["处置实际耗时"] / ndf["处置预计耗时"] * 100
-            df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
-
+            # f1 = lambda x: day_end if x > day_end else x
+            df["处置结束时间"] = df["处置结束时间"].apply(f1)
             # 时间转分钟
-            # https://blog.csdn.net/liudinglong1989/article/details/78728683
-            f = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
-            df["处置实际耗时(mins)"] = df["处置实际耗时"].apply(f)
+            # f2 = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
+            # 当天处置实际耗时
+            df["当天案件开始时间"] = df["立案时间"]
+            # df["当天零点"] = day_start
+            # f3 = lambda x: day_start if x < day_start else x  # 取立案时间和零点较晚的
+            df["当天案件开始时间"] = df["当天案件开始时间"].apply(f3)
+            # df["立案时间"].apply(f3)
+            df["当天处置实际耗时(mins)"] = df["处置结束时间"].subtract(df["当天案件开始时间"])
+            df["当天处置实际耗时(mins)"] = df["当天处置实际耗时(mins)"].apply(f2)
+            # 截至当天, 处置实际耗时总计
+            df["处置实际耗时(mins)"] = df["处置结束时间"].subtract(df["立案时间"])
+            df["处置实际耗时(mins)"] = df["处置实际耗时(mins)"].apply(f2)
             # 处置耗时百分比
-            df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
+            df["处置耗时百分比"] = df["处置实际耗时(mins)"] / df["处置预计耗时(mins)"] * 100
 
-        iso_someday = int(deadline.isoformat().replace('-', '')[:8])
-        ndf.to_excel('../tmp2/{}_{}.xlsx'.format(area, iso_someday))
+        iso_someday = int(day_end.isoformat().replace('-', '')[:8])
+        df.to_excel('../tmp2/{}_{}.xlsx'.format(area, iso_someday))
 
     return df
 
