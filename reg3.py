@@ -37,6 +37,29 @@ def read_source(file_path, sheetname=0):
     '处置结束时间', '强结限制', '案件类型', '结案时间', '首次派遣时间', '受理开始时间', '案件阶段名称', '受理时间', 
     '立案时间', '强制结案时间'
     """
+
+    # 时间类
+    df["立案耗时"] = df["立案时间"].subtract(df["上报时间"]).values
+    df["处置预计耗时"] = df["处置截止时间"].subtract(df["立案时间"])
+    df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
+    # 时间转分钟
+    # https://blog.csdn.net/liudinglong1989/article/details/78728683
+    f = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
+    df["立案耗时"] = df["立案耗时"].apply(f)
+    df["处置预计耗时"] = df["处置预计耗时"].apply(f)
+    df["处置实际耗时"] = df["处置实际耗时"].apply(f)
+    # 处置耗时百分比
+    df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
+
+    # 立案耗时加权
+    bins = [0, 60, 360, 1440, 4320, 999999]  # minutes
+    df["W立案"] = pd.cut(df["立案耗时"], bins, labels=[5, 4, 3, 2, 1])
+    # 处置耗时加权
+    bins = [0, 25, 50, 70, 100, 150, 200, 300, 999999]  # percentage / %
+    df["W处置"] = pd.cut(df["处置耗时百分比"], bins, labels=[10, 9, 8, 7, 6, 4, 2, 0])
+    # 强结案加权
+    df["W强结"] = -pd.isnull(df["强制结案时间"])
+
     return df
 
 
@@ -90,27 +113,6 @@ def convert_to_new_dataframe(df):
             t2a = (row["处置结束时间"] - row["立案时间"]).seconds
         return someday, somewhere, n1, n2, t1, t2p, t2a
 
-    # 时间类
-    df["立案耗时"] = df["立案时间"].subtract(df["上报时间"]).values
-    df["处置预计耗时"] = df["处置截止时间"].subtract(df["立案时间"])
-    df["处置实际耗时"] = df["处置结束时间"].subtract(df["立案时间"])
-    # 时间转分钟
-    # https://blog.csdn.net/liudinglong1989/article/details/78728683
-    f = lambda x: int(x / timedelta(minutes=1)) if isinstance(x, timedelta) else -1
-    df["立案耗时"] = df["立案耗时"].apply(f)
-    df["处置预计耗时"] = df["处置预计耗时"].apply(f)
-    df["处置实际耗时"] = df["处置实际耗时"].apply(f)
-    # 处置耗时百分比
-    df["处置耗时百分比"] = df["处置实际耗时"] / df["处置预计耗时"] * 100
-
-    # 立案耗时加权
-    bins = [0, 60, 360, 1440, 4320, 999999]  # minutes
-    df["W立案"] = pd.cut(df["立案耗时"], bins, labels=[1, 2, 3, 4, 5])
-    # 处置耗时加权
-    bins = [0, 25, 50, 70, 100, 150, 200, 300, 999999]
-    df["W处置"] = pd.cut(df["处置耗时百分比"], bins, labels=[1, 2, 3, 4, 5, 6, 7, 8])
-    # 强结案加权
-    df["W强结"] = -pd.isnull(df["强制结案时间"])
     return df
 
 
