@@ -3,8 +3,6 @@ import tqdm
 
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
 from datetime import datetime, timedelta
 
 
@@ -92,7 +90,7 @@ def convert_to_new_dataframe(srs_df):
 
     # for i in tqdm.trange(len(index)):
     lst = []
-    for i in tqdm.trange(40):
+    for i in tqdm.trange(30):
         day = index[i]
         day_start = pd.Timestamp(datetime.combine(day, datetime.min.time()))
         day_end = pd.Timestamp(datetime.combine(day, datetime.max.time()))
@@ -171,74 +169,54 @@ def convert_to_new_dataframe(srs_df):
             c1 = df["立案耗时"].sum()  # 立案耗时总长(分钟)
             c2 = df["当天计划内耗时"].sum()  # 计划内耗时总长(分钟)
             c3 = df["当天计划外耗时"].sum()  # 计划外耗时总长(分钟)
+            gt = get_gt(df_gt, area, day)
 
-            lst.append([day, area, n1, n2, n3, c1, c2, c3])
+            lst.append([day, area, n1, n2, n3, c1, c2, c3, gt])
 
     res = pd.DataFrame(lst, columns=["日期", "街道",
                                      "自行处理案件总数", "其他案件总数", "强制结案总数",
-                                     "立案耗时总长(分钟)", "计划内耗时总长(分钟)", "计划外耗时总长(分钟)"])
-
-    res.to_excel('../ndf20190919.xlsx')
+                                     "立案耗时总长(分钟)", "计划内耗时总长(分钟)", "计划外耗时总长(分钟)",
+                                     "原评分"])
 
     return res
 
 
-def convert_data_and_label_to_train(data_df, label_df):
-    df = pd.merge(data_df, label_df, on='area')
-    train_label = df['mean_value']
-    train_data = df.drop('mean_value', 1)
-    del train_data['area']
-    return train_data, train_label
-
-
-def linear_reg_test(train_data, train_label, test_data, index):
+def cal_index(input_excel):
     """
-    线性回归
+    根据"强制结案总数", "计划内耗时总长(分钟)", "计划外耗时总长(分钟)"三个指标得到基础分;
+    根据"自行处理案件总数", 奖励一定分数;
+    根据"强制结案总数", 扣除一定分数;
+    "其他案件总数"不作为打分依据(一定程度上,已经在"计划内(外)耗时总长中得到体现);
+    "立案耗时总长(分钟)"不作为打分依据, 因本指标为"处置效能指数", 不牵涉从上报到立案
+    :return:
     """
-    lr = LinearRegression(normalize=True)
-    lr.fit(train_data, train_label)
-
-    print(lr.intercept_, '\n', lr.coef_)
-
-    y1 = lr.predict(test_data)
-    y1 = pd.Series(y1)
-    y1.index = index
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options
-        print(y1)
-    return y1, lr
-
-
-def polynomial_reg_test(train_data, train_label, test_data, index):
-    """
-    多项式回归
-    """
-    quadratic_featurizer = PolynomialFeatures(degree=2)
-    X_train_quadratic = quadratic_featurizer.fit_transform(train_data)
-    regressor_quadratic = LinearRegression(normalize=True)
-    regressor_quadratic.fit(X_train_quadratic, train_label)
-
-    print(regressor_quadratic.intercept_, '\n', regressor_quadratic.coef_)
-
-    test_data = quadratic_featurizer.fit_transform(test_data)
-    y1 = regressor_quadratic.predict(test_data)
-    y1 = pd.Series(y1)
-    y1.index = index
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options
-        print(y1)
-    return y1, regressor_quadratic
+    df = pd.read_excel(input_excel)
+    # TODO: 增加当天内完成案件的权重(比如自行处理案件因当天完成, 相比第二天完成的案件, 少了一晚上的执行分数)
+    w1 = 60  # 自行处理案件总数, 认为w1分钟为完成一个自行处理案件所需的平均时间
+    w2 = 0  # 其他案件总数, 不考评
+    w3 = 0  # 强制结案总数, 暂不考评(没有好的思路, 且强制结案会同时生成一个新的案件)
+    w4 = 0  # 立案耗时总长(分钟), 不考评
+    w5 = 1  # 计划内耗时总长(分钟)
+    w6 = -1  # 计划外耗时总长(分钟)
+    df['新评分'] = (
+                        df["自行处理案件总数"] * w1 +
+                        df["其他案件总数"] * w2 +
+                        df["强制结案总数"] * w3 +
+                        df["立案耗时总长(分钟)"] * w4 +
+                        df["计划内耗时总长(分钟)"] * w5 +
+                        df["计划外耗时总长(分钟)"] * w6
+                ) / 1000
+    return df
 
 
 if __name__ == "__main__":
-    # define source file path
-    # source_file = '../queryResult_2019-09-10_145030_processed.xlsx'
-    source_file = '../event_data.npy'
-    df1 = read_source(source_file)
-    # df1.to_pickle('../event_data_simplified.npy')
+    # source_file = '../event_data.npy'
+    # df1 = read_source(source_file)
 
-    df2 = convert_to_new_dataframe(df1)
-    # df2.to_excel('../ndf.xlsx')
+    # df2 = convert_to_new_dataframe(df1)
+    # df2.to_excel('../ndf20190919.xlsx')
 
-    # dm = DataModel(df1)
-    # df1 = dm.cal_all()
-    # df1.to_pickle('../one_line.npy')
-    # df1.to_excel('../one_line.xlsx')
+    df3_file_path = '../ndf20190919.xlsx'
+    df3 = cal_index(df3_file_path)
+    df3.to_excel(df3_file_path)
+
