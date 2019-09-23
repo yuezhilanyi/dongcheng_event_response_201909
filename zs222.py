@@ -5,22 +5,17 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
+from utils import read_source, new_df_until_someday, get_gt
 
-def read_source(file_path, sheetname=0):
+
+def dataframe_preprocess(file_path, sheetname=0):
     """
-    读取源文件并简化，最后以结案日期为索引，生成一张新表用作训练和测试
+    读取源文件并简化
     :param file_path:
     :param sheetname:
     :return:
     """
-    # read into dataframe
-    if file_path.endswith("npy"):
-        df = pd.read_pickle(file_path)
-    elif file_path.endswith("xlsx") or file_path.endswith("xls"):
-        df = pd.read_excel(file_path, sheetname=sheetname)
-        # df.to_pickle('../event_data.npy')
-    else:
-        raise Exception("Only 'npy' or 'xlsx' or 'xls' supported, input file type: {}".format(file_path.split('.'[-1])))
+    df = read_source(file_path, sheetname=sheetname)
 
     # filter with ["问题类型"] == "事件"
     df = df[df["问题类型"] == "事件"]
@@ -56,37 +51,12 @@ def read_source(file_path, sheetname=0):
 def convert_to_new_dataframe(srs_df):
     # # add some fields
     srs_df["结案日期"] = srs_df["结案时间"].dt.date
-    df_gt = pd.read_excel("../ZS222.xlsx")
+    df_gt = pd.read_excel("../source_data/ZS222 - 处置效能指数.xlsx")
     df_gt.set_index(df_gt["日期"], inplace=True)
 
     # new dataframe
     index = srs_df["结案日期"].value_counts().index
     index = sorted(index)
-
-    def get_gt(dataframe_gt, somewhere, someday):
-        iso_someday = int(someday.isoformat().replace('-', ''))
-        dataframe_gt = dataframe_gt.xs(iso_someday)
-        gt = dataframe_gt[somewhere]
-        return gt
-
-    def new_df_until_someday(dataframe, somewhere, someday):
-        deadline = pd.Timestamp(datetime.combine(someday, datetime.max.time()))
-        # F1 - 某地所有案件
-        dataframe = dataframe[dataframe["街道"] == somewhere]
-
-        # F2.1 - 监督员自行处理的案件
-        dataframe_self = dataframe[dataframe["问题来源"] == "监督员自行处理"]
-        dataframe_self = dataframe_self[dataframe["上报时间"].dt.date == someday]  # 某日自行处理案件, 默认为当天完成(结案时间不正确)
-        # F2.2 - 剩余案件 (均具有处置截止时间, 处置结束时间, 结案时间, 立案时间等信息)
-        dataframe = dataframe[dataframe["问题来源"] != "监督员自行处理"]
-
-        # F3 (<-F2.2) - 考核日之前的所有案件
-        dataframe = dataframe[dataframe["上报时间"] <= deadline]
-
-        basename = int(deadline.isoformat().replace('-', '')[:8])
-        dataframe.to_excel('../tmp/{}_{}.xlsx'.format(somewhere, basename))
-
-        return dataframe, dataframe_self
 
     # for i in tqdm.trange(len(index)):
     lst = []
@@ -157,10 +127,6 @@ def convert_to_new_dataframe(srs_df):
             df["当天计划外耗时"] = df["当天处置实际耗时"].subtract(df["当天计划内耗时"])
 
             iso_someday = int(day_end.isoformat().replace('-', '')[:8])
-            try:
-                df.to_excel('../tmp2/{}_{}.xlsx'.format(area, iso_someday))
-            except PermissionError as e:
-                print(e)
 
             # 开始统计
             n1 = len(df_self)  # 自行处理的数量
@@ -210,13 +176,13 @@ def cal_index(input_excel):
 
 
 if __name__ == "__main__":
-    # source_file = '../event_data.npy'
-    # df1 = read_source(source_file)
+    source_file = '../event_data.npy'
+    df1 = dataframe_preprocess(source_file)
 
-    # df2 = convert_to_new_dataframe(df1)
-    # df2.to_excel('../ndf20190919.xlsx')
+    df2 = convert_to_new_dataframe(df1)
+    df2.to_excel('../ndf20190923.xlsx')
 
-    df3_file_path = '../ndf20190919.xlsx'
+    df3_file_path = '../ndf20190923.xlsx'
     df3 = cal_index(df3_file_path)
     df3.to_excel(df3_file_path)
 
