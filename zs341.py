@@ -132,11 +132,10 @@ if __name__ == "__main__":
     # regression
     df2 = pd.read_excel('../zs341_20190923.xlsx')
     df2 = df2[df2["原指标"] != 0]
-    index = df2.index
     Y = df2["原指标"]
     X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
-    linear_reg_test(X, Y, X, index)
-    polynomial_reg_test(X, Y, X, index)
+    linear_reg_test(X, Y, X, df2.index)
+    polynomial_reg_test(X, Y, X, df2.index)
 
     # 计算相关系数
     result_dict = cal_coef(X, Y)
