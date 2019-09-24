@@ -29,16 +29,11 @@ def dataframe_preprocess(file_path, sheetname=0):
     # 一次筛选
     # 筛选后大类名称: 服务项目, 劳动与社会保障(包含劳动关系与纠纷, 社会福利与保障), 矛盾纠纷, 社会事业, 特殊行业监管
     df = df[df["问题类型"] == "社会服务管理"]
-    # 二次筛选
-    # TODO: 做两次分析, 分别为包含二次筛选和不包含
-    # df = df[(df["小类名称"] == "劳动关系与纠纷") |
-    #         (df["小类名称"] == "社会福利与保障") |
-    #         (df["大类名称"] == "社会事业")]
     # filter with ['当前阶段'] == '[作废]'
     df = df[df['当前阶段'] != '[作废]']  # 根据2019.9.18与网格中心考评处的沟通, 不考虑作废案件
 
     # keep only useful columns, to reduce too many dimensions
-    df = df[['问题类型', '大类名称', '小类名称', '街道', '上报时间', '当前阶段', '处置截止时间', '处置结束时间']]
+    df = df[['问题来源', '问题类型', '大类名称', '小类名称', '街道', '上报时间', '当前阶段', '处置截止时间', '处置结束时间']]
 
     return df
 
@@ -98,15 +93,15 @@ def convert_to_new_dataframe(srs_df, write_path=''):
 
 if __name__ == "__main__":
     # source_file = '../queryResult_2019-09-10_145030_zs341.xlsx'
-    # source_file = '../queryResult_2019-09-10_145030.npy'
-    # df1 = dataframe_preprocess(source_file)
-    #
-    # df2 = convert_to_new_dataframe(df1, write_path='../tmp_zs341')
-    # df2.to_excel('../zs341_20190923.xlsx')
+    source_file = '../queryResult_2019-09-10_145030.npy'
+    df1 = dataframe_preprocess(source_file)
+
+    df2 = convert_to_new_dataframe(df1, write_path='../tmp_zs341')
+    df2.to_excel('../zs341_20190923.xlsx')
 
     # regression
     df2 = pd.read_excel('../zs341_20190923.xlsx')
-    df2 = df2[df2["原指标"] != 0]
+    # df2 = df2[df2["原指标"] != 0]
     Y = df2["原指标"]
     X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
     linear_reg_test(X, Y, X, df2.index)

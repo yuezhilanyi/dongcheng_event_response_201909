@@ -30,7 +30,7 @@ def dataframe_preprocess(file_path, sheetname=0):
     df = df[df['当前阶段'] != '[作废]']  # 根据2019.9.18与网格中心考评处的沟通, 不考虑作废案件
 
     # keep only useful columns, to reduce too many dimensions
-    df = df[['问题类型', '大类名称', '小类名称', '小类明细', '微类名称',
+    df = df[['问题来源', '问题类型', '大类名称', '小类名称', '小类明细', '微类名称',
              '街道', '上报时间', '当前阶段', '处置截止时间', '处置结束时间']]
 
     # 二次筛选

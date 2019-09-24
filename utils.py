@@ -71,14 +71,10 @@ def new_df_until_someday(dataframe, somewhere, someday, write_path=''):
     dataframe = dataframe[dataframe["街道"] == somewhere]
 
     # F2.1 - 监督员自行处理的案件
-    try:
-        dataframe_self = dataframe[dataframe["问题来源"] == "监督员自行处理"]
-        dataframe_self = dataframe_self[dataframe["上报时间"].dt.date == someday]  # 某日自行处理案件, 默认为当天完成(结案时间不正确)
-        # F2.2 - 剩余案件 (均具有处置截止时间, 处置结束时间, 结案时间, 立案时间等信息)
-        dataframe = dataframe[dataframe["问题来源"] != "监督员自行处理"]
-    except KeyError as e:
-        # print("没有监督员自行处理的案件")
-        dataframe_self = pd.DataFrame()
+    dataframe_self = dataframe[dataframe["问题来源"] == "监督员自行处理"]
+    dataframe_self = dataframe_self[dataframe["上报时间"].dt.date == someday]  # 某日自行处理案件, 默认为当天完成(结案时间不正确)
+    # F2.2 - 剩余案件 (均具有处置截止时间, 处置结束时间, 结案时间, 立案时间等信息)
+    dataframe = dataframe[dataframe["问题来源"] != "监督员自行处理"]
 
     # F3 (<-F2.2) - 考核日之前的所有案件
     dataframe = dataframe[dataframe["上报时间"] <= day_end]
