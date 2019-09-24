@@ -69,19 +69,24 @@ def convert_to_new_dataframe(srs_df, write_path=''):
                 lst.append([day, area, 0, len(df_self), 0, 0, 0, 0])
                 continue
 
-            # 开始统计
+            # 截至统计日, 所有未完成的案件
             n1 = len(df)  # 社会服务管理案件总数
+            n1a = len(df[df["小类名称"] == "劳动关系与纠纷"])  # 劳动关系与纠纷
+            n1b = len(df[df["小类名称"] == "社会福利与保障"])  # 社会福利与保障
+            n1c = len(df[df["大类名称"] == "社会事业"])  # 社会事业
+            # 统计日当日, 未完成的案件
+            df = df[df["上报时间"].dt.date == day]  # 当天案件总数
             n2 = len(df[df["上报时间"].dt.date == day])  # 当天案件总数
-            n3 = len(df[df["小类名称"] == "劳动关系与纠纷"])  # 劳动关系与纠纷
-            n4 = len(df[df["小类名称"] == "社会福利与保障"])  # 社会福利与保障
-            n5 = len(df[df["大类名称"] == "社会事业"])  # 社会事业
+            n2a = len(df[df["小类名称"] == "劳动关系与纠纷"])  # 劳动关系与纠纷
+            n2b = len(df[df["小类名称"] == "社会福利与保障"])  # 社会福利与保障
+            n2c = len(df[df["大类名称"] == "社会事业"])  # 社会事业
             gt = get_gt(df_gt, area, day)
 
-            lst.append([day, area, n1, n2, n3, n4, n5, gt])
+            lst.append([day, area, n1, n1a, n1b, n1c, n2, n2a, n2b, n2c, gt])
 
     res = pd.DataFrame(lst, columns=["日期", "街道",
-                                     "社会服务管理案件总数", "当天案件总数",
-                                     "劳动关系与纠纷", "社会福利与保障", "社会事业", "原指标"])
+                                     "社会服务管理案件总数", "劳动关系与纠纷(总计)", "社会福利与保障(总计)", "社会事业(总计)",
+                                     "当天案件总数", "劳动关系与纠纷(当日)", "社会福利与保障(当日)", "社会事业(当日)", "原指标"])
 
     return res
 
