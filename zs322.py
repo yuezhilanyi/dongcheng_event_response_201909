@@ -14,7 +14,7 @@ import tqdm
 import pandas as pd
 
 from utils import read_source, new_df_until_someday, get_gt
-from utils import linear_reg_test, polynomial_reg_test, cal_coef, spearmanr
+from utils import regression_test
 
 
 def dataframe_preprocess(file_path, sheetname=0):
@@ -119,17 +119,4 @@ if __name__ == "__main__":
     df2.to_excel('../zs322_20190923.xlsx')
 
     # regression
-    df2 = pd.read_excel('../zs322_20190923.xlsx')
-    # df2 = df2[df2["原指标"] != 0]
-    Y = df2["原指标"]
-    X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
-    linear_reg_test(X, Y, X, df2.index)
-    polynomial_reg_test(X, Y, X, df2.index)
-
-    # 计算相关系数
-    result_dict = cal_coef(X, Y)
-    for k, v in result_dict.items():
-        print(k, v)
-
-    a, b = spearmanr(X, Y)
-    print(a, b)
+    regression_test('../zs322_20190923.xlsx')

@@ -142,3 +142,20 @@ def cal_coef(train_df, label_df):
 
 
 spearmanr = scipy.stats.spearmanr
+
+
+def regression_test(input_file_path):
+    # regression
+    df2 = pd.read_excel(input_file_path)
+    Y = df2["原指标"]
+    X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
+    linear_reg_test(X, Y, X, df2.index)
+    polynomial_reg_test(X, Y, X, df2.index)
+
+    # 计算相关系数
+    result_dict = cal_coef(X, Y)
+    for k, v in result_dict.items():
+        print(k, v)
+
+    a, b = scipy.stats.spearmanr(X, Y)
+    print(a, b)
