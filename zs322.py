@@ -90,7 +90,7 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             n1c = func_count(f3)  # "生活垃圾"
             # 统计日当日, 未完成的案件
             df = df[df["上报时间"].dt.date == day]  # 当天案件总数
-            n2 = len(df[df["上报时间"].dt.date == day])  # 当天案件总数
+            n2 = len(df)  # 当天案件总数
             n2a = func_count(f1)  # "施工废弃料|施工废料"
             n2b = func_count(f2)  # "废弃家具"
             n2c = func_count(f3)  # "生活垃圾"
