@@ -1,4 +1,14 @@
-import os
+"""
+四级指数编号 - ZS222
+四级指数 - 处置效能指数
+指数说明 - 突发事件处置率与处置周期情况
+计算方式 - 各类突发事件在一定周期内处理完成的数量(根据处置完成周期加权）/安保相关事件总数量
+评价方式 - 正向评价
+权重 - 1
+预警阈值 - max(10%）
+分级规则 - 四分之一数，中位数，四分之三数
+备注 - 无
+"""
 import tqdm
 
 import pandas as pd
@@ -6,6 +16,7 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from utils import read_source, new_df_until_someday, get_gt
+from utils import regression_test
 
 
 def dataframe_preprocess(file_path, sheetname=0):
@@ -48,19 +59,18 @@ def dataframe_preprocess(file_path, sheetname=0):
     return df
 
 
-def convert_to_new_dataframe(srs_df):
-    # # add some fields
-    srs_df["结案日期"] = srs_df["结案时间"].dt.date
-    df_gt = pd.read_excel("../source_data/ZS222 - 处置效能指数.xlsx")
+def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
+    # 读取文件
+    srs_df = dataframe_preprocess(srs_path)
+    srs_df["上报日期"] = srs_df["上报时间"].dt.date
+    df_gt = pd.read_excel(gt_path)
     df_gt.set_index(df_gt["日期"], inplace=True)
 
-    # new dataframe
-    index = srs_df["结案日期"].value_counts().index
+    index = srs_df["上报日期"].value_counts().index
     index = sorted(index)
 
-    # for i in tqdm.trange(len(index)):
     lst = []
-    for i in tqdm.trange(30):
+    for i in tqdm.trange(len(index)):
         day = index[i]
         day_start = pd.Timestamp(datetime.combine(day, datetime.min.time()))
         day_end = pd.Timestamp(datetime.combine(day, datetime.max.time()))
@@ -142,14 +152,51 @@ def convert_to_new_dataframe(srs_df):
     res = pd.DataFrame(lst, columns=["日期", "街道",
                                      "自行处理案件总数", "其他案件总数", "强制结案总数",
                                      "立案耗时总长(分钟)", "计划内耗时总长(分钟)", "计划外耗时总长(分钟)",
-                                     "原评分"])
+                                     "原指标"])
 
     return res
 
 
-if __name__ == "__main__":
-    source_file = '../event_data.npy'
-    df1 = dataframe_preprocess(source_file)
+def cal_index(input_excel):
+    """
+    根据"强制结案总数", "计划内耗时总长(分钟)", "计划外耗时总长(分钟)"三个指标得到基础分;
+    根据"自行处理案件总数", 奖励一定分数;
+    根据"强制结案总数", 扣除一定分数;
+    "其他案件总数"不作为打分依据(一定程度上,已经在"计划内(外)耗时总长中得到体现);
+    "立案耗时总长(分钟)"不作为打分依据, 因本指标为"处置效能指数", 不牵涉从上报到立案
+    :return:
+    """
+    df = pd.read_excel(input_excel)
+    # TODO: 增加当天内完成案件的权重(比如自行处理案件因当天完成, 相比第二天完成的案件, 少了一晚上的执行分数)
+    w1 = 60  # 自行处理案件总数, 认为w1分钟为完成一个自行处理案件所需的平均时间
+    w2 = 0  # 其他案件总数, 不考评
+    w3 = 0  # 强制结案总数, 暂不考评(没有好的思路, 且强制结案会同时生成一个新的案件)
+    w4 = 0  # 立案耗时总长(分钟), 不考评
+    w5 = 1  # 计划内耗时总长(分钟)
+    w6 = -1  # 计划外耗时总长(分钟)
+    df['新评分'] = (
+                        df["自行处理案件总数"] * w1 +
+                        df["其他案件总数"] * w2 +
+                        df["强制结案总数"] * w3 +
+                        df["立案耗时总长(分钟)"] * w4 +
+                        df["计划内耗时总长(分钟)"] * w5 +
+                        df["计划外耗时总长(分钟)"] * w6
+                ) / 1000
+    return df
 
-    df2 = convert_to_new_dataframe(df1)
-    df2.to_excel('../ndf20190923.xlsx')
+
+if __name__ == "__main__":
+    # source_file = '../queryResult_2019-09-10_145030.xlsx'
+    source_file = '../queryResult_2019-09-10_145030.npy'
+    gt_file = "../source_data/ZS222 - 处置效能指数.xlsx"
+
+    df2 = convert_to_new_dataframe(source_file, gt_file, write_path='../tmp_zs222')
+    df2.to_excel('../zs222_20190923.xlsx')
+
+    df3_file_path = '../zs222_20190923.xlsx'
+    df3 = cal_index(df3_file_path)
+    df3 = df3.drop('Unnamed: 0', 1)
+    df3.to_excel(df3_file_path)
+
+    # regression
+    regression_test('../zs222_20190923.xlsx')

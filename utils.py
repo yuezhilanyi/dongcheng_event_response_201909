@@ -148,7 +148,7 @@ def regression_test(input_file_path):
     # regression
     df2 = pd.read_excel(input_file_path)
     Y = df2["原指标"]
-    X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
+    X = df2.drop(["日期", "街道", "原指标"], axis=1)
     linear_reg_test(X, Y, X, df2.index)
     polynomial_reg_test(X, Y, X, df2.index)
 
