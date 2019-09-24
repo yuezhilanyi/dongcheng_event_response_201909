@@ -71,7 +71,9 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
 
             # 如果 dataframe 为空, 跳至下一个
             if len(df) == 0:
-                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0, 0, 0, gt])
+                lst.append([day, area,
+                            0, 0, 0, 0,
+                            0, 0, 0, 0, gt])
                 continue
 
             # 过滤字符串
