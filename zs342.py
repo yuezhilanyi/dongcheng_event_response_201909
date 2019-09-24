@@ -65,17 +65,19 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
 
             # 如果 dataframe 为空, 跳至下一个
             if len(df) == 0:
-                lst.append([day, area, 0, 0, gt])
+                lst.append([day, area, 0, 0, len(df_self), gt])
                 continue
 
             # 截至统计日, 所有未完成的案件
             n1 = len(df)  # 案件总数
             # 统计日当日, 未完成的案件
             n2 = len(df[df["上报时间"].dt.date == day])  # 当天案件总数
+            # 自行处理的案件总数
+            n3 = len(df_self)
 
-            lst.append([day, area, n1, n2, gt])
+            lst.append([day, area, n1, n2, n3, gt])
 
-    res = pd.DataFrame(lst, columns=["日期", "街道", "案件总数", "当天案件总数", "原指标"])
+    res = pd.DataFrame(lst, columns=["日期", "街道", "案件总数", "当天案件总数", "自行处理案件总数", "原指标"])
 
     return res
 

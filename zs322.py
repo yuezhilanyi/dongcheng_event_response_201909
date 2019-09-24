@@ -73,7 +73,8 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             if len(df) == 0:
                 lst.append([day, area,
                             0, 0, 0, 0,
-                            0, 0, 0, 0, gt])
+                            0, 0, 0, 0,
+                            len(df_self), gt])
                 continue
 
             # 过滤字符串
@@ -96,12 +97,15 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             n2a = func_count(f1)  # "施工废弃料|施工废料"
             n2b = func_count(f2)  # "废弃家具"
             n2c = func_count(f3)  # "生活垃圾"
+            # 自行处理的案件总数
+            n3 = len(df_self)
 
-            lst.append([day, area, n1, n1a, n1b, n1c, n2, n2a, n2b, n2c, gt])
+            lst.append([day, area, n1, n1a, n1b, n1c, n2, n2a, n2b, n2c, n3, gt])
 
     res = pd.DataFrame(lst, columns=["日期", "街道",
                                      "案件总数", "施工废弃料(总计)", "废弃家具(总计)", "生活垃圾(总计)",
-                                     "当天案件总数", "施工废弃料(当日)", "废弃家具(当日)", "生活垃圾(当日)", "原指标"])
+                                     "当天案件总数", "施工废弃料(当日)", "废弃家具(当日)", "生活垃圾(当日)",
+                                     "自行处理案件总数", "原指标"])
 
     return res
 

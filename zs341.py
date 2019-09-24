@@ -69,7 +69,7 @@ def convert_to_new_dataframe(srs_df, write_path=''):
 
             # 如果 dataframe 为空, 跳至下一个
             if len(df) == 0:
-                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0, 0, 0, gt])
+                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0, 0, 0, len(df_self), gt])
                 continue
 
             # 截至统计日, 所有未完成的案件
@@ -83,12 +83,15 @@ def convert_to_new_dataframe(srs_df, write_path=''):
             n2a = len(df[df["小类名称"] == "劳动关系与纠纷"])  # 劳动关系与纠纷
             n2b = len(df[df["小类名称"] == "社会福利与保障"])  # 社会福利与保障
             n2c = len(df[df["大类名称"] == "社会事业"])  # 社会事业
+            # 自行处理的案件总数
+            n3 = len(df_self)
 
-            lst.append([day, area, n1, n1a, n1b, n1c, n2, n2a, n2b, n2c, gt])
+            lst.append([day, area, n1, n1a, n1b, n1c, n2, n2a, n2b, n2c, n3, gt])
 
     res = pd.DataFrame(lst, columns=["日期", "街道",
                                      "社会服务管理案件总数", "劳动关系与纠纷(总计)", "社会福利与保障(总计)", "社会事业(总计)",
-                                     "当天案件总数", "劳动关系与纠纷(当日)", "社会福利与保障(当日)", "社会事业(当日)", "原指标"])
+                                     "当天案件总数", "劳动关系与纠纷(当日)", "社会福利与保障(当日)", "社会事业(当日)",
+                                     "自行处理案件总数", "原指标"])
 
     return res
 
