@@ -64,9 +64,12 @@ def convert_to_new_dataframe(srs_df, write_path=''):
             df, df_self = new_df_until_someday(srs_df, area, day, write_path=write_path)
             df = df[-(df["处置结束时间"] < pd.Timestamp(day))]
 
+            # 获取原指标
+            gt = get_gt(df_gt, area, day)
+
             # 如果 dataframe 为空, 跳至下一个
             if len(df) == 0:
-                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0])
+                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0, 0, 0, gt])
                 continue
 
             # 截至统计日, 所有未完成的案件
@@ -80,7 +83,6 @@ def convert_to_new_dataframe(srs_df, write_path=''):
             n2a = len(df[df["小类名称"] == "劳动关系与纠纷"])  # 劳动关系与纠纷
             n2b = len(df[df["小类名称"] == "社会福利与保障"])  # 社会福利与保障
             n2c = len(df[df["大类名称"] == "社会事业"])  # 社会事业
-            gt = get_gt(df_gt, area, day)
 
             lst.append([day, area, n1, n1a, n1b, n1c, n2, n2a, n2b, n2c, gt])
 
