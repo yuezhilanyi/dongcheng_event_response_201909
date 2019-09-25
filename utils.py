@@ -72,7 +72,8 @@ def new_df_until_someday(dataframe, somewhere, someday, write_path=''):
 
     # F2.1 - 监督员自行处理的案件
     dataframe_self = dataframe[dataframe["问题来源"] == "监督员自行处理"]
-    dataframe_self = dataframe_self[dataframe["上报时间"].dt.date == someday]  # 某日自行处理案件, 默认为当天完成(结案时间不正确)
+    if len(dataframe_self) != 0:  # 防止 UserWarning: Boolean Series key will be reindexed to match DataFrame index
+        dataframe_self = dataframe_self[dataframe["上报时间"].dt.date == someday]  # 某日自行处理案件, 默认为当天完成(结案时间不正确)
     # F2.2 - 剩余案件 (均具有处置截止时间, 处置结束时间, 结案时间, 立案时间等信息)
     dataframe = dataframe[dataframe["问题来源"] != "监督员自行处理"]
 
@@ -136,19 +137,23 @@ def cal_coef(train_df, label_df):
     SPM = scipy.stats.spearmanr
     res = OrderedDict()
     for col in train_df.columns:
-        coef, p = (SPM(train_df[col], label_df))
+        if train_df[col].any():
+            coef, p = (SPM(train_df[col], label_df))
+        else:
+            coef, p = -1, -1
         res[col] = (coef, p)
     return res
-
-
-spearmanr = scipy.stats.spearmanr
 
 
 def regression_test(input_file_path):
     # regression
     df2 = pd.read_excel(input_file_path)
-    Y = df2["原指标"]
-    X = df2.drop(["日期", "街道", "原指标"], axis=1)
+    try:
+        Y = df2["原指标"]
+        X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
+    except KeyError:
+        Y = df2["('原指标', '')"]
+        X = df2.drop(["Unnamed: 0", "('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)  # 两级索引
     linear_reg_test(X, Y, X, df2.index)
     polynomial_reg_test(X, Y, X, df2.index)
 
