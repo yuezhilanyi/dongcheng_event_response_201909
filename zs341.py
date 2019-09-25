@@ -301,12 +301,12 @@ def convert_to_new_dataframe(srs_df, write_path=''):
 
 
 if __name__ == "__main__":
-    # # source_file = '../queryResult_2019-09-10_145030_zs341.xlsx'
-    # source_file = '../queryResult_2019-09-10_145030.npy'
-    # df1 = dataframe_preprocess(source_file)
-    #
-    # df2 = convert_to_new_dataframe(df1, write_path='../tmp_zs341')
-    # df2.to_excel('../zs341_20190923.xlsx')
+    # source_file = '../queryResult_2019-09-10_145030_zs341.xlsx'
+    source_file = '../queryResult_2019-09-10_145030.npy'
+    df1 = dataframe_preprocess(source_file)
+
+    df2 = convert_to_new_dataframe(df1, write_path='../tmp_zs341')
+    df2.to_excel('../zs341_20190923.xlsx')
 
     # regression
     regression_test('../zs341_20190923.xlsx')
