@@ -49,7 +49,14 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
     index = srs_df["上报日期"].value_counts().index
     index = sorted(index)
 
-    lst = []
+    # 定义新表
+    # TODO: 替换为全类别 (现有的可能不够全)
+    GROUP_BY_VALUE = "小类名称"
+    keys = srs_df.groupby(GROUP_BY_VALUE).count().index.tolist()
+    keys.extend(["案件总数", "当天案件总数", "自行处理案件总数", "日期", "街道", "原指标"])
+    res = pd.DataFrame(index=keys)
+
+    j = 0
     for i in tqdm.trange(len(index)):
         day = index[i]
         assert day is not None
@@ -63,23 +70,26 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             # 获取原指标
             gt = get_gt(df_gt, area, day)
 
-            # 如果 dataframe 为空, 跳至下一个
-            if len(df) == 0:
-                lst.append([day, area, 0, 0, len(df_self), gt])
-                continue
-
             # 截至统计日, 所有未完成的案件
-            n1 = len(df)  # 案件总数
+            n1 = len(df)  # 社会服务管理案件总数
             # 统计日当日, 未完成的案件
             n2 = len(df[df["上报时间"].dt.date == day])  # 当天案件总数
             # 自行处理的案件总数
             n3 = len(df_self)
 
-            lst.append([day, area, n1, n2, n3, gt])
+            # 分类统计
+            s = df.groupby(GROUP_BY_VALUE).count()["上报时间"]
+            s["案件总数"] = n1
+            s["当天案件总数"] = n2
+            s["自行处理案件总数"] = n3
+            s["日期"] = day
+            s["街道"] = area
+            s["原指标"] = gt
+            res[j] = s
+            j += 1
 
-    res = pd.DataFrame(lst, columns=["日期", "街道", "案件总数", "当天案件总数", "自行处理案件总数", "原指标"])
-
-    return res
+    res.fillna(0, inplace=True)
+    return res.T
 
 
 if __name__ == "__main__":
