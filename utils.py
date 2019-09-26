@@ -1,6 +1,7 @@
 import os
 import scipy.stats
 
+import numpy as np
 import pandas as pd
 
 from collections import OrderedDict
@@ -94,6 +95,18 @@ def new_df_until_someday(dataframe, somewhere, someday, write_path=''):
             print(e)
 
     return dataframe, dataframe_self
+
+
+def finished_before_someday(df, someday):
+    # 必须包含的列: 统计日, 上报时间, 处置截止时间, 处置结束时间
+    day_start = pd.Timestamp(datetime.combine(someday, datetime.min.time()))
+    day_end = pd.Timestamp(datetime.combine(someday, datetime.max.time()))
+
+    def func_less_than_day_end(x): return day_end if x > day_end else x
+
+    df["当日处置结束时间"] = df["处置结束时间"].apply(func_less_than_day_end)
+
+    return df[df["处置截止时间"] > df["当日处置结束时间"]], df[df["处置截止时间"] <= df["当日处置结束时间"]]
 
 
 def linear_reg_test(train_data, train_label, test_data, index):
