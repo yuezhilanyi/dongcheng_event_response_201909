@@ -89,9 +89,11 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             df, df_self = new_df_until_someday(srs_df, area, day)
             df = df[-(df["处置结束时间"] < pd.Timestamp(day))]
 
+            gt = get_gt(df_gt, area, day)
+
             # 如果 dataframe 为空, 跳至下一个
             if len(df) == 0:
-                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0])
+                lst.append([day, area, 0, len(df_self), 0, 0, 0, 0, gt])
                 continue
 
             # TODO: 漏洞 - 2017东城管字537978
@@ -145,7 +147,6 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             c1 = df["立案耗时"].sum()  # 立案耗时总长(分钟)
             c2 = df["当天计划内耗时"].sum()  # 计划内耗时总长(分钟)
             c3 = df["当天计划外耗时"].sum()  # 计划外耗时总长(分钟)
-            gt = get_gt(df_gt, area, day)
 
             lst.append([day, area, n1, n2, n3, c1, c2, c3, gt])
 
