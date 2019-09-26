@@ -86,7 +86,7 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
         for area in ["东华门", "景山", "交道口", "安定门", "北新桥", "东四", "朝阳门", "建国门", "东直门", "和平里",
                      "前门", "崇外", "东花市", "龙潭", "体育馆", "天坛", "永定门外"]:  # 和网格代码顺序一致, 方便后续观察对比
             # tqdm.tqdm.write(area)
-            df, df_self = new_df_until_someday(srs_df, area, day)
+            df, df_self = new_df_until_someday(srs_df, area, day, write_path=write_path)
             df = df[-(df["处置结束时间"] < pd.Timestamp(day))]
 
             gt = get_gt(df_gt, area, day)
