@@ -1,4 +1,5 @@
 import os
+import pickle
 import scipy.stats
 
 import numpy as np
@@ -187,3 +188,22 @@ def index_analysis(input_path):
     arr = arr / uni[0] if uni[0] != 0 else arr / uni[1]
     bins = np.bincount(arr.flatten().astype('uint16'))
     return uni, bins
+
+
+def model_predict(test_df, model_path):
+    """
+    指定文件和模型，返回得分
+    :param test_df: pd.DataFrame
+    :param model_path:
+    :return:  pd.Series or pd.DataFrame
+    """
+    # load model
+    model = pickle.load(open(model_path, 'rb'))
+
+    # predict
+    y1 = model.predict(test_df)
+
+    # add score
+    y1 = pd.Series(y1)
+
+    return y1
