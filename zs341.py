@@ -53,7 +53,7 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
     GROUP_BY_VALUE = ["大类名称", "小类名称"]
     keys = srs_df.groupby(GROUP_BY_VALUE).count().index.tolist()
     keys.extend([("案件总数", ''), ("当天案件总数", ''), ("自行处理案件总数", ''), ("日期", ''), ("街道", ''),
-                 ("原指标", ''), ("新指标基础分", '')])
+                 ("原指标", '')])
     res = pd.DataFrame(index=keys)
 
     j = 0
@@ -92,7 +92,6 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             s["日期"] = day
             s["街道"] = area
             s["原指标"] = gt
-            s["新指标基础分"] = n1a * 1 + n1b * 2
             res[j] = s
             j += 1
 
