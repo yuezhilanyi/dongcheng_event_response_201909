@@ -185,5 +185,5 @@ def index_analysis(input_path):
     arr = df.to_numpy()
     uni = np.unique(arr)
     arr = arr / uni[0] if uni[0] != 0 else arr / uni[1]
-    count = np.bincount(arr.flatten().astype('uint16'))
-    return uni, count
+    bins = np.bincount(arr.flatten().astype('uint16'))
+    return uni, bins
