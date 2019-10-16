@@ -159,7 +159,7 @@ def cal_coef(train_df, label_df):
     return res
 
 
-def regression_test(input_file_path):
+def regression_test(input_file_path, save_base_name=''):
     # regression
     df2 = pd.read_excel(input_file_path)
     try:
@@ -168,8 +168,12 @@ def regression_test(input_file_path):
     except KeyError:
         Y = df2["('原指标', '')"]
         X = df2.drop(["Unnamed: 0", "('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)  # 两级索引
-    linear_reg_test(X, Y, X, df2.index)
-    polynomial_reg_test(X, Y, X, df2.index)
+    _, model = linear_reg_test(X, Y, X, df2.index)
+    if save_base_name:
+        pickle.dump(model, open('./models/{}_linear.sav'.format(save_base_name), 'wb'))
+    _, model = polynomial_reg_test(X, Y, X, df2.index)
+    if save_base_name:
+        pickle.dump(model, open('./models/{}_poly.sav'.format(save_base_name), 'wb'))
 
     # 计算相关系数
     result_dict = cal_coef(X, Y)
@@ -199,6 +203,14 @@ def model_predict(test_df, model_path):
     """
     # load model
     model = pickle.load(open(model_path, 'rb'))
+
+    if 'linear' in model_path:
+        pass
+    elif 'poly' in model_path:
+        quadratic_featurizer = PolynomialFeatures(degree=2)
+        test_df = quadratic_featurizer.fit_transform(test_df)
+    else:
+        raise IndexError("Unintended model name: {}, neither linear nor poly in it.".format(model_path))
 
     # predict
     y1 = model.predict(test_df)

@@ -119,4 +119,4 @@ if __name__ == "__main__":
     df2.to_excel('../zs322_20190923.xlsx')
 
     # regression
-    regression_test('../zs322_20190923.xlsx')
+    regression_test('../zs322_20190923.xlsx', 'zs322')

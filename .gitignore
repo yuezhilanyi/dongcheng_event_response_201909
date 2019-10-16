@@ -127,3 +127,5 @@ dmypy.json
 
 # data 
 *.npy
+models
+output
