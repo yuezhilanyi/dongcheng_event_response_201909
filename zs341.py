@@ -52,8 +52,8 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
     # TODO: 替换为全类别 (现有的可能不够全)
     GROUP_BY_VALUE = ["大类名称", "小类名称"]
     keys = srs_df.groupby(GROUP_BY_VALUE).count().index.tolist()
-    keys.extend([("案件总数", ''), ("当天案件总数", ''), ("自行处理案件总数", ''), ("日期", ''), ("街道", ''),
-                 ("原指标", '')])
+    keys.extend([("案件总数", ''), ("按时完成", ''), ("延期完成", ''), ("当天案件总数", ''), ("自行处理案件总数", ''),
+                 ("日期", ''), ("街道", ''), ("原指标", '')])
     res = pd.DataFrame(index=keys)
 
     j = 0
