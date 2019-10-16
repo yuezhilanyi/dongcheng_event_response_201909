@@ -38,10 +38,11 @@ def dataframe_preprocess(file_path, sheetname=0):
     return df
 
 
-def convert_to_new_dataframe(srs_df, write_path=''):
+def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
     # 读取文件
+    srs_df = dataframe_preprocess(srs_path)
     srs_df["上报日期"] = srs_df["上报时间"].dt.date
-    df_gt = pd.read_excel("../source_data/ZS341 - 服务需求指数.xlsx")
+    df_gt = pd.read_excel(gt_path)
     df_gt.set_index(df_gt["日期"], inplace=True)
 
     index = srs_df["上报日期"].value_counts().index
@@ -102,9 +103,9 @@ def convert_to_new_dataframe(srs_df, write_path=''):
 if __name__ == "__main__":
     # source_file = '../queryResult_2019-09-10_145030_zs341.xlsx'
     source_file = '../queryResult_2019-09-10_145030.npy'
-    df1 = dataframe_preprocess(source_file)
+    gt_file = "../source_data/ZS341 - 服务需求指数.xlsx"
 
-    df2 = convert_to_new_dataframe(df1, write_path='../tmp_zs341')
+    df2 = convert_to_new_dataframe(source_file, gt_file, write_path='../tmp_zs341')
     df2.to_excel('../zs341_20190923.xlsx')
 
     # regression
