@@ -8,6 +8,8 @@ import importlib
 
 import pandas as pd
 
+from functools import reduce
+
 import zs222
 import zs232
 import zs321
@@ -167,11 +169,11 @@ class Processing(object):
         if ic in ['zs321', 'zs322']:
             # cal
             try:
-                df = df.drop(["日期", "街道", "原指标"], axis=1)
+                df_copy = df.drop(["日期", "街道", "原指标"], axis=1)
             except KeyError:
-                df = df.drop(["('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)
+                df_copy = df.drop(["('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)
             # TODO: complete model file
-            y = utils.model_predict(df, MODEL_PATHS[ic])
+            y = utils.model_predict(df_copy, MODEL_PATHS[ic])
         else:
             if ic in ['zs341', 'zs342']:
                 """
@@ -208,18 +210,34 @@ class Processing(object):
                 raise IndexError("不可能出现的错误。")
 
         df = df.assign(score=y)
+        df = df.rename(columns={"score": ic})
         df.to_excel(summary_data_write_path)
         return y, df
 
+    @staticmethod
+    def merge_by_year_and_date(input_list):
+        """为防止错位，将各指标生成的表格按年和日期将得分对齐
+        :param input_list:  list of pd.DataFrame
+        :return:  pd.DataFrame
+        """
+        # https://stackoverflow.com/questions/41815079/pandas-merge-join-two-data-frames-on-multiple-columns
+        # https://stackoverflow.com/questions/23668427/pandas-three-way-joining-multiple-dataframes-on-columns/23671390
+        res = reduce(lambda left, right:
+                     pd.merge(left, right, how='outer', left_on=["日期", "街道"], right_on=["日期", "街道"]),
+                     input_list)
+        return res
+
     def cal_all(self, save_path):
-        # new dataframe
-        df = pd.DataFrame(columns=self.allowed_ics)
+        df_list = []
         # calculate
         for ic in self.allowed_ics:
-            df[ic], _ = self.cal_x(ic)
+            _, df = self.cal_x(ic)
+            df_list.append(df)
+        # merge
+        df_final = self.merge_by_year_and_date(df_list)
         # save to disk
-        df.to_excel(save_path)
-        return df
+        df_final.to_excel(save_path)
+        return df_final
 
 
 def main(args):
