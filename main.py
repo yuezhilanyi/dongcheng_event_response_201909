@@ -168,10 +168,11 @@ class Processing(object):
 
         if ic in ['zs321', 'zs322']:
             # cal
+            df_copy = df.copy()
             try:
-                df_copy = df.drop(["日期", "街道", "原指标"], axis=1)
+                df_copy = df_copy.drop(["日期", "街道", "原指标"], axis=1)
             except KeyError:
-                df_copy = df.drop(["('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)
+                df_copy = df_copy.drop(["('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)
             # TODO: complete model file
             y = utils.model_predict(df_copy, MODEL_PATHS[ic])
         else:
