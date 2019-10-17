@@ -10,10 +10,10 @@ import pandas as pd
 
 from functools import reduce
 
-import zs222
-import zs232
-import zs321
-import zs322
+# import zs222
+# import zs232
+# import zs321
+# import zs322
 import utils
 
 INDEX_GT_PATHS = {
@@ -50,104 +50,104 @@ class Processing(object):
         self.write_daily_data_to_disk = write_daily_data_to_disk
         self.allowed_ics = ['zs222', 'zs232', 'zs321', 'zs322', 'zs341', 'zs342']
 
-    def cal_zs222(self):
-        """
-
-        :return: pd.DataFrame (日期，街道，评分)
-        """
-        ic = 'zs222'
-        source_file = self.source_file_path
-        write_path = '../tmp_{}'.format(ic) if self.write_daily_data_to_disk else ''
-        gt_file = INDEX_GT_PATHS[ic]
-
-        df = zs222.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
-
-        df2_file_path = '../{}_20190923.xlsx'.format(ic)
-        df2 = zs222.cal_index(df2_file_path)
-        df2 = df2[["日期", "街道", "新评分"]]
-        df2.to_excel(df2_file_path)
-
-        return df2
-
-    def cal_zs232(self):
-        """
-
-        :return: pd.DataFrame (日期，街道，评分)
-        """
-        ic = "zs232"
-        source_file = self.source_file_path
-        write_path = '../tmp_zs232' if self.write_daily_data_to_disk else ''
-        gt_file = INDEX_GT_PATHS["zs232"]
-
-        df2 = zs232.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
-        df2.to_excel('../zs232_20190923.xlsx')
-
-        df3_file_path = '../zs232_20190923.xlsx'
-        df3 = zs232.cal_index(df3_file_path)
-        df3 = df3[["日期", "街道", "新评分"]]
-        df3.to_excel(df3_file_path)
-
-        return df3
-
-    def cal_zs321(self):
-        """
-
-        :return: pd.Series
-        """
-        source_file = self.source_file_path
-        write_path = '../tmp_zs321' if self.write_daily_data_to_disk else ''
-        gt_file = INDEX_GT_PATHS["zs321"]  # TODO: 新数据没有历史评分
-
-        df2 = zs321.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
-
-        # cal
-        X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
-        y = utils.model_predict(X, MODEL_PATHS['zs321'])
-
-        df3 = df2.assign(score=y)
-        df3 = df3.loc[["日期", "街道", 'score']]
-        df3 = df3.rename(columns={"score": "新评分"})
-
-        df3.to_excel('../zs321_20190923.xlsx')
-
-        return df3
-
-    def cal_zs322(self):
-        source_file = self.source_file_path
-        write_path = '../tmp_zs322' if self.write_daily_data_to_disk else ''
-        gt_file = INDEX_GT_PATHS["zs322"]
-
-        df2 = zs322.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
-        df2.to_excel('../zs322_20190923.xlsx')
-
-        # cal
-        X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
-        y = utils.model_predict(X, MODEL_PATHS['zs322'])
-
-        return y
-
-    def cal_zs34x(self, ic=None):
-        """
-
-        :param ic: index code, zs341 or zs342
-        :return:  pd.DataFrame
-        """
-        daily_data_write_path = '../tmp_{}'.format(ic) if self.write_daily_data_to_disk else ''
-        gt_file = INDEX_GT_PATHS[ic]
-        summary_data_write_path = './output/{}.xlsx'.format(ic)
-
-        # TODO: 将两个 convert_to_new_dataframe 合并为一个
-        zs34x = importlib.import_module(ic)
-        df = zs34x.convert_to_new_dataframe(self.source_file_path, gt_file, write_path=daily_data_write_path)
-
-        # cal
-        df = df.drop(["('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)
-        y = utils.model_predict(df, MODEL_PATHS[ic])
-
-        df = df.assign(score=y)
-        df.to_excel(summary_data_write_path)
-
-        return df
+    # def cal_zs222(self):
+    #     """
+    #
+    #     :return: pd.DataFrame (日期，街道，评分)
+    #     """
+    #     ic = 'zs222'
+    #     source_file = self.source_file_path
+    #     write_path = '../tmp_{}'.format(ic) if self.write_daily_data_to_disk else ''
+    #     gt_file = INDEX_GT_PATHS[ic]
+    #
+    #     df = zs222.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
+    #
+    #     df2_file_path = '../{}_20190923.xlsx'.format(ic)
+    #     df2 = zs222.cal_index(df2_file_path)
+    #     df2 = df2[["日期", "街道", "新评分"]]
+    #     df2.to_excel(df2_file_path)
+    #
+    #     return df2
+    #
+    # def cal_zs232(self):
+    #     """
+    #
+    #     :return: pd.DataFrame (日期，街道，评分)
+    #     """
+    #     ic = "zs232"
+    #     source_file = self.source_file_path
+    #     write_path = '../tmp_zs232' if self.write_daily_data_to_disk else ''
+    #     gt_file = INDEX_GT_PATHS["zs232"]
+    #
+    #     df2 = zs232.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
+    #     df2.to_excel('../zs232_20190923.xlsx')
+    #
+    #     df3_file_path = '../zs232_20190923.xlsx'
+    #     df3 = zs232.cal_index(df3_file_path)
+    #     df3 = df3[["日期", "街道", "新评分"]]
+    #     df3.to_excel(df3_file_path)
+    #
+    #     return df3
+    #
+    # def cal_zs321(self):
+    #     """
+    #
+    #     :return: pd.Series
+    #     """
+    #     source_file = self.source_file_path
+    #     write_path = '../tmp_zs321' if self.write_daily_data_to_disk else ''
+    #     gt_file = INDEX_GT_PATHS["zs321"]  # TODO: 新数据没有历史评分
+    #
+    #     df2 = zs321.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
+    #
+    #     # cal
+    #     X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
+    #     y = utils.model_predict(X, MODEL_PATHS['zs321'])
+    #
+    #     df3 = df2.assign(score=y)
+    #     df3 = df3.loc[["日期", "街道", 'score']]
+    #     df3 = df3.rename(columns={"score": "新评分"})
+    #
+    #     df3.to_excel('../zs321_20190923.xlsx')
+    #
+    #     return df3
+    #
+    # def cal_zs322(self):
+    #     source_file = self.source_file_path
+    #     write_path = '../tmp_zs322' if self.write_daily_data_to_disk else ''
+    #     gt_file = INDEX_GT_PATHS["zs322"]
+    #
+    #     df2 = zs322.convert_to_new_dataframe(source_file, gt_file, write_path=write_path)
+    #     df2.to_excel('../zs322_20190923.xlsx')
+    #
+    #     # cal
+    #     X = df2.drop(["Unnamed: 0", "日期", "街道", "原指标"], axis=1)
+    #     y = utils.model_predict(X, MODEL_PATHS['zs322'])
+    #
+    #     return y
+    #
+    # def cal_zs34x(self, ic=None):
+    #     """
+    #
+    #     :param ic: index code, zs341 or zs342
+    #     :return:  pd.DataFrame
+    #     """
+    #     daily_data_write_path = '../tmp_{}'.format(ic) if self.write_daily_data_to_disk else ''
+    #     gt_file = INDEX_GT_PATHS[ic]
+    #     summary_data_write_path = './output/{}.xlsx'.format(ic)
+    #
+    #     # TODO: 将两个 convert_to_new_dataframe 合并为一个
+    #     zs34x = importlib.import_module(ic)
+    #     df = zs34x.convert_to_new_dataframe(self.source_file_path, gt_file, write_path=daily_data_write_path)
+    #
+    #     # cal
+    #     df = df.drop(["('日期', '')", "('街道', '')", "('原指标', '')"], axis=1)
+    #     y = utils.model_predict(df, MODEL_PATHS[ic])
+    #
+    #     df = df.assign(score=y)
+    #     df.to_excel(summary_data_write_path)
+    #
+    #     return df
 
     def cal_x(self, ic):
         """
