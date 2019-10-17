@@ -52,11 +52,8 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
     # 定义新表
     # TODO: 替换为全类别 (现有的可能不够全)
     GROUP_BY_VALUE = "小类名称"
-    keys = srs_df.groupby(GROUP_BY_VALUE).count().index.tolist()
-    keys.extend(["案件总数", "按时完成", "延期完成", "当天案件总数", "自行处理案件总数", "日期", "街道", "原指标"])
-    res = pd.DataFrame(index=keys)
 
-    j = 0
+    lst = []
     for i in tqdm.trange(len(index)):
         day = index[i]
         assert day is not None
@@ -89,11 +86,13 @@ def convert_to_new_dataframe(srs_path, gt_path, write_path=''):
             s["日期"] = day
             s["街道"] = area
             s["原指标"] = gt
-            res[j] = s
-            j += 1
+            lst.append(s)
 
+    res = pd.concat(lst, axis=1, sort=False)
     res.fillna(0, inplace=True)
-    return res.T
+    res = res.T
+    res.reset_index(inplace=True, drop=True)
+    return res
 
 
 if __name__ == "__main__":
