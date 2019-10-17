@@ -2,6 +2,7 @@
 主程序，传参确定需要计算的数据文件路径以及指数。
 尽量保持各子函数的结构不变。
 """
+import os
 import sys
 import argparse
 import importlib
@@ -15,6 +16,11 @@ from functools import reduce
 # import zs321
 # import zs322
 import utils
+
+
+p = os.path.dirname(os.path.abspath(__file__))
+os.chdir(p)
+# print(os.path.abspath(os.curdir))
 
 INDEX_GT_PATHS = {
     "zs222": "../source_data/ZS222 - 处置效能指数.xlsx",
@@ -242,7 +248,7 @@ class Processing(object):
 
 
 def main(args):
-    p = Processing(args.source_file_path, write_daily_data_to_disk=True)
+    p = Processing(args.source_file_path, write_daily_data_to_disk=False)
     if args.mode == 'all':
         p.cal_all(args.output_path)
     else:
