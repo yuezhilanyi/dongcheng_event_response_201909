@@ -45,8 +45,11 @@ def read_source(file_path, sheetname=0):
     elif file_path.endswith("xlsx") or file_path.endswith("xls"):
         df = pd.read_excel(file_path, sheet_name=sheetname)
         # df.to_pickle('../event_data.npy')
+    elif file_path.endswith("csv"):
+        with open(file_path) as f:
+            df = pd.read_csv(f)
     else:
-        raise Exception("Only 'npy' or 'xlsx' or 'xls' supported, input file type: {}".format(file_path.split('.'[-1])))
+        raise Exception("Only 'npy', 'xlsx', 'xls', 'csv' supported, input file type: {}".format(file_path.split('.'[-1])))
     return df
 
 
